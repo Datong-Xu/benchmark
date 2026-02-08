@@ -152,7 +152,19 @@ python humaneval/eval_humaneval.py \
 
 ### 生成式评测 (GSM8K, BBH)
 
-使用 **greedy decoding** 生成回答，然后从回答中提取答案与标准答案比较。GSM8K 使用数字精确匹配，BBH 使用字符串精确匹配。
+使用 **greedy decoding** 生成回答，然后从回答中提取答案与标准答案比较。GSM8K 使用数字精确匹配，BBH 使用归一化后的字符串精确匹配。
+
+BBH 答案提取采用多级策略，以兼容不同能力水平的模型：
+1. 若生成的第一行本身就是标准短答案（如 `True`/`False`/`Yes`/`No`），直接采用
+2. 匹配 `the answer is ...` / `answer: ...` 等常见模式
+3. 若第一个词是已知答案词（如 `True`/`False`），仅取第一个词（适配小模型续写行为）
+4. 兜底返回完整第一行
+
+可通过环境变量 `BBH_DEBUG=N` 打印前 N 个样本的调试信息（预测值、期望值、原始生成文本），用于诊断答案提取问题：
+
+```bash
+BBH_DEBUG=10 bash run.sh
+```
 
 ### 代码评测 (HumanEval)
 

@@ -58,12 +58,33 @@ def build_prompt(few_shot_examples: list[dict], test_question: str) -> str:
 
 
 def extract_answer(generated: str) -> str:
-    """Extract answer from generated text — take the first line/sentence."""
-    # Take text before first newline
-    answer = generated.split("\n")[0].strip()
-    # Remove trailing punctuation artifacts
-    answer = answer.rstrip(".")
-    return answer
+    """Extract answer from generated text.
+
+    Strategy (ordered by priority):
+    1. If the first line is exactly a known short answer (e.g. True/False,
+       a single letter, a number), return it directly.
+    2. Look for "the answer is <X>" pattern.
+    3. Fall back to the first word of the first line — small models often
+       start with the correct token but keep generating noise after it.
+    """
+    first_line = generated.split("\n")[0].strip().rstrip(".")
+
+    # 1. Clean short answer (single token / short phrase)
+    if first_line.lower() in ("true", "false", "yes", "no", "valid", "invalid"):
+        return first_line
+
+    # 2. "the answer is ..." pattern
+    m = re.search(r"(?:the answer is|answer:|so the answer is)\s*(.+)", first_line, re.IGNORECASE)
+    if m:
+        return m.group(1).strip().rstrip(".")
+
+    # 3. If first word is a known boolean token, take just that word
+    first_word = first_line.split()[0] if first_line.split() else first_line
+    if first_word.lower() in ("true", "false", "yes", "no"):
+        return first_word
+
+    # 4. Fallback: return full first line
+    return first_line
 
 
 def normalize(text: str) -> str:
@@ -143,13 +164,24 @@ def evaluate_bbh(
             continue
 
         correct = 0
+        debug_limit = int(os.environ.get("BBH_DEBUG", "0"))
+        debug_count = 0
         for ex in tqdm(eval_ds, desc=f"  {task_name}", unit="q"):
             prompt = build_prompt(few_shot, ex["question"])
             generated = generate_answer(model, tokenizer, prompt, device, max_new_tokens)
             pred = extract_answer(generated)
 
-            if normalize(pred) == normalize(ex["target"]):
+            is_correct = normalize(pred) == normalize(ex["target"])
+            if is_correct:
                 correct += 1
+
+            if debug_limit > 0 and debug_count < debug_limit:
+                debug_count += 1
+                mark = "OK" if is_correct else "XX"
+                print(f"\n  [{mark}] #{debug_count}")
+                print(f"    target:    {ex['target']!r}")
+                print(f"    pred:      {pred!r}")
+                print(f"    raw gen:   {generated[:200]!r}")
 
         accuracy = correct / len(eval_ds)
         task_results[task_name] = {
