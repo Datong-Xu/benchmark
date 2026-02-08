@@ -83,7 +83,7 @@ pip install fla  # 如需评测 fla 系列模型
 1. 编辑 `run.sh` 顶部的配置：
 
 ```bash
-MODEL_PATH="/path/to/your/model"   # HuggingFace 格式的模型路径
+MODEL_PATH="/path/to/your/model"   # HuggingFace 格式的模型路径，此文件夹下必须有.safetensor等模型文件
 ```
 
 2. 通过评测开关选择要运行的测试（`1` = 运行，`0` = 跳过）：
