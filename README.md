@@ -71,13 +71,6 @@ benchmark/
 
 ## 快速开始
 
-### 环境依赖
-
-```bash
-pip install torch transformers datasets pyarrow tqdm
-pip install fla  # 如需评测 fla 系列模型
-```
-
 ### 一键运行所有评测
 
 1. 编辑 `run.sh` 顶部的配置：
